@@ -74,20 +74,25 @@ export default function Admin() {
   const deleteStoryMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await apiRequest("DELETE", `/api/stories/${id}`);
-      return response.json();
+      if (response.ok) {
+        return await response.json();
+      }
+      throw new Error('Failed to delete story');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stories/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stories", "all"] });
       toast({
         title: "Story Deleted",
         description: "Story has been permanently deleted.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Delete error:", error);
       toast({
         title: "Delete Failed",
-        description: "Failed to delete story.",
+        description: error.message || "Failed to delete story.",
         variant: "destructive",
       });
     },
