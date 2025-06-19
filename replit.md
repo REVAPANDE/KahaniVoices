@@ -23,8 +23,8 @@ Kahani is a full-stack story sharing platform that allows users to submit, brows
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
 - **Schema Management**: Drizzle Kit for migrations and schema management
-- **Development Storage**: In-memory storage implementation for rapid prototyping
-- **Database Provider**: Neon Database (serverless PostgreSQL)
+- **Storage Implementation**: DatabaseStorage class using PostgreSQL
+- **Database Provider**: Replit PostgreSQL database
 
 ## Key Components
 
@@ -100,8 +100,16 @@ Kahani is a full-stack story sharing platform that allows users to submit, brows
 
 ## Changelog
 
-Changelog:
-- June 18, 2025. Initial setup
+- June 19, 2025: Added PostgreSQL database
+  - Replaced in-memory storage with DatabaseStorage
+  - Configured Drizzle ORM with PostgreSQL
+  - Initialized database with default categories
+  - All data now persists across application restarts
+- June 18, 2025: Initial setup
+  - Created complete storytelling platform
+  - Implemented frontend with React/TypeScript
+  - Built REST API with Express
+  - Added story submission and browsing features
 
 ## User Preferences
 

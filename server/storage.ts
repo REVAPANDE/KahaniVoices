@@ -1,4 +1,6 @@
 import { users, stories, categories, type User, type InsertUser, type Story, type InsertStory, type Category, type InsertCategory } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -19,135 +21,85 @@ export interface IStorage {
   createCategory(category: InsertCategory): Promise<Category>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private stories: Map<number, Story>;
-  private categories: Map<number, Category>;
-  private currentUserId: number;
-  private currentStoryId: number;
-  private currentCategoryId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.stories = new Map();
-    this.categories = new Map();
-    this.currentUserId = 1;
-    this.currentStoryId = 1;
-    this.currentCategoryId = 1;
-    
-    // Initialize default categories
-    this.initializeCategories();
-  }
-
-  private async initializeCategories() {
-    const defaultCategories = [
-      {
-        name: "Social Justice",
-        slug: "social-justice",
-        description: "Stories of resilience and fighting for equality",
-        icon: "fas fa-fist-raised",
-        gradient: "from-primary to-sage"
-      },
-      {
-        name: "Identity & Culture",
-        slug: "identity-culture",
-        description: "Celebrating diverse identities and traditions",
-        icon: "fas fa-heart",
-        gradient: "from-secondary to-accent"
-      },
-      {
-        name: "Community Impact",
-        slug: "community-impact",
-        description: "Local heroes making a difference",
-        icon: "fas fa-users",
-        gradient: "from-sage to-primary"
-      },
-      {
-        name: "Overcoming Challenges",
-        slug: "overcoming-challenges",
-        description: "Stories of triumph and personal growth",
-        icon: "fas fa-seedling",
-        gradient: "from-accent to-secondary"
-      }
-    ];
-
-    for (const category of defaultCategories) {
-      await this.createCategory(category);
-    }
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
   }
 
   async getStories(status?: string): Promise<Story[]> {
-    const allStories = Array.from(this.stories.values());
+    let storiesQuery = db.select().from(stories);
+    
     if (status) {
-      return allStories.filter(story => story.status === status);
+      storiesQuery = storiesQuery.where(eq(stories.status, status));
     }
+    
+    const allStories = await storiesQuery;
     return allStories.sort((a, b) => 
       new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
     );
   }
 
   async getStory(id: number): Promise<Story | undefined> {
-    return this.stories.get(id);
+    const [story] = await db.select().from(stories).where(eq(stories.id, id));
+    return story || undefined;
   }
 
   async createStory(insertStory: InsertStory): Promise<Story> {
-    const id = this.currentStoryId++;
-    const now = new Date();
-    const story: Story = {
-      ...insertStory,
-      id,
-      status: "pending",
-      featured: false,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.stories.set(id, story);
+    const [story] = await db
+      .insert(stories)
+      .values(insertStory)
+      .returning();
     return story;
   }
 
   async updateStoryStatus(id: number, status: string): Promise<Story | undefined> {
-    const story = this.stories.get(id);
-    if (story) {
-      const updatedStory = { ...story, status, updatedAt: new Date() };
-      this.stories.set(id, updatedStory);
-      return updatedStory;
-    }
-    return undefined;
+    const [story] = await db
+      .update(stories)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(stories.id, id))
+      .returning();
+    return story || undefined;
   }
 
   async getFeaturedStories(): Promise<Story[]> {
-    return Array.from(this.stories.values())
-      .filter(story => story.featured && story.status === "approved")
+    const featuredStories = await db
+      .select()
+      .from(stories)
+      .where(eq(stories.featured, true));
+    
+    return featuredStories
+      .filter(story => story.status === "approved")
       .sort((a, b) => 
         new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
       );
   }
 
   async searchStories(query: string): Promise<Story[]> {
+    const allStories = await db
+      .select()
+      .from(stories)
+      .where(eq(stories.status, "approved"));
+    
     const lowercaseQuery = query.toLowerCase();
-    return Array.from(this.stories.values())
+    return allStories
       .filter(story => 
-        story.status === "approved" &&
-        (story.title.toLowerCase().includes(lowercaseQuery) ||
-         story.content.toLowerCase().includes(lowercaseQuery) ||
-         story.tags?.some(tag => tag.toLowerCase().includes(lowercaseQuery)))
+        story.title.toLowerCase().includes(lowercaseQuery) ||
+        story.content.toLowerCase().includes(lowercaseQuery) ||
+        story.tags?.some(tag => tag.toLowerCase().includes(lowercaseQuery))
       )
       .sort((a, b) => 
         new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
@@ -155,23 +107,29 @@ export class MemStorage implements IStorage {
   }
 
   async getStoriesByCategory(category: string): Promise<Story[]> {
-    return Array.from(this.stories.values())
-      .filter(story => story.status === "approved" && story.category === category)
+    const categoryStories = await db
+      .select()
+      .from(stories)
+      .where(eq(stories.category, category));
+    
+    return categoryStories
+      .filter(story => story.status === "approved")
       .sort((a, b) => 
         new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
       );
   }
 
   async getCategories(): Promise<Category[]> {
-    return Array.from(this.categories.values());
+    return await db.select().from(categories);
   }
 
   async createCategory(insertCategory: InsertCategory): Promise<Category> {
-    const id = this.currentCategoryId++;
-    const category: Category = { ...insertCategory, id };
-    this.categories.set(id, category);
+    const [category] = await db
+      .insert(categories)
+      .values(insertCategory)
+      .returning();
     return category;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
