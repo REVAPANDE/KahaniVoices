@@ -31,7 +31,11 @@ export default function Header({ onSearch }: HeaderProps) {
         <Button variant="ghost">Categories</Button>
       </Link>
       <Button variant="ghost">About</Button>
-      <Button variant="ghost">Community</Button>
+      <Link href="/admin">
+        <Button variant="ghost" className={location === "/admin" ? "text-[#2B5A3E]" : ""}>
+          Admin
+        </Button>
+      </Link>
     </>
   );
 

@@ -7,6 +7,7 @@ import Home from "@/pages/home";
 import Stories from "@/pages/stories";
 import StoryDetail from "@/pages/story-detail";
 import StorySubmission from "@/pages/story-submission";
+import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/stories" component={Stories} />
       <Route path="/stories/:id" component={StoryDetail} />
       <Route path="/submit" component={StorySubmission} />
+      <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
   );

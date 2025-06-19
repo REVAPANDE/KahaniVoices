@@ -1,8 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema } from "@shared/schema";
+import { insertStorySchema, stories } from "@shared/schema";
 import { z } from "zod";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all approved stories
@@ -50,7 +52,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertStorySchema.parse(req.body);
       const story = await storage.createStory(validatedData);
-      res.status(201).json(story);
+      
+      // Auto-approve the story for now (you can change this later)
+      const approvedStory = await storage.updateStoryStatus(story.id, "approved");
+      
+      res.status(201).json(approvedStory || story);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
@@ -58,6 +64,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors: error.errors 
         });
       }
+      console.error("Story creation error:", error);
       res.status(500).json({ message: "Failed to create story" });
     }
   });
@@ -68,7 +75,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stories = await storage.getFeaturedStories();
       res.json(stories);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch featured stories" });
+      console.error("Featured stories error:", error);
+      res.json([]); // Return empty array instead of error
     }
   });
 
@@ -89,7 +97,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin routes for story moderation (simplified for demo)
+  // Get pending stories (for admin review)
+  app.get("/api/admin/stories/pending", async (req, res) => {
+    try {
+      const stories = await storage.getStories("pending");
+      res.json(stories);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch pending stories" });
+    }
+  });
+
+  // Admin routes for story moderation
   app.patch("/api/stories/:id/status", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -107,7 +125,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(story);
     } catch (error) {
+      console.error("Status update error:", error);
       res.status(500).json({ message: "Failed to update story status" });
+    }
+  });
+
+  // Feature/unfeature a story
+  app.patch("/api/stories/:id/feature", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { featured } = req.body;
+      
+      const [story] = await db
+        .update(stories)
+        .set({ featured, updatedAt: new Date() })
+        .where(eq(stories.id, id))
+        .returning();
+      
+      if (!story) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+      
+      res.json(story);
+    } catch (error) {
+      console.error("Feature update error:", error);
+      res.status(500).json({ message: "Failed to update story" });
     }
   });
 

@@ -41,16 +41,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getStories(status?: string): Promise<Story[]> {
-    let storiesQuery = db.select().from(stories);
-    
-    if (status) {
-      storiesQuery = storiesQuery.where(eq(stories.status, status));
+    try {
+      if (status) {
+        const filteredStories = await db
+          .select()
+          .from(stories)
+          .where(eq(stories.status, status));
+        return filteredStories.sort((a, b) => 
+          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+        );
+      } else {
+        const allStories = await db.select().from(stories);
+        return allStories.sort((a, b) => 
+          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+        );
+      }
+    } catch (error) {
+      console.error("Database error in getStories:", error);
+      return [];
     }
-    
-    const allStories = await storiesQuery;
-    return allStories.sort((a, b) => 
-      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-    );
   }
 
   async getStory(id: number): Promise<Story | undefined> {
@@ -76,47 +85,62 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFeaturedStories(): Promise<Story[]> {
-    const featuredStories = await db
-      .select()
-      .from(stories)
-      .where(eq(stories.featured, true));
-    
-    return featuredStories
-      .filter(story => story.status === "approved")
-      .sort((a, b) => 
-        new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-      );
+    try {
+      const featuredStories = await db
+        .select()
+        .from(stories)
+        .where(eq(stories.featured, true));
+      
+      return featuredStories
+        .filter(story => story.status === "approved")
+        .sort((a, b) => 
+          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+        );
+    } catch (error) {
+      console.error("Database error in getFeaturedStories:", error);
+      return [];
+    }
   }
 
   async searchStories(query: string): Promise<Story[]> {
-    const allStories = await db
-      .select()
-      .from(stories)
-      .where(eq(stories.status, "approved"));
-    
-    const lowercaseQuery = query.toLowerCase();
-    return allStories
-      .filter(story => 
-        story.title.toLowerCase().includes(lowercaseQuery) ||
-        story.content.toLowerCase().includes(lowercaseQuery) ||
-        story.tags?.some(tag => tag.toLowerCase().includes(lowercaseQuery))
-      )
-      .sort((a, b) => 
-        new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-      );
+    try {
+      const allStories = await db
+        .select()
+        .from(stories)
+        .where(eq(stories.status, "approved"));
+      
+      const lowercaseQuery = query.toLowerCase();
+      return allStories
+        .filter(story => 
+          story.title.toLowerCase().includes(lowercaseQuery) ||
+          story.content.toLowerCase().includes(lowercaseQuery) ||
+          story.tags?.some(tag => tag.toLowerCase().includes(lowercaseQuery))
+        )
+        .sort((a, b) => 
+          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+        );
+    } catch (error) {
+      console.error("Database error in searchStories:", error);
+      return [];
+    }
   }
 
   async getStoriesByCategory(category: string): Promise<Story[]> {
-    const categoryStories = await db
-      .select()
-      .from(stories)
-      .where(eq(stories.category, category));
-    
-    return categoryStories
-      .filter(story => story.status === "approved")
-      .sort((a, b) => 
-        new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-      );
+    try {
+      const categoryStories = await db
+        .select()
+        .from(stories)
+        .where(eq(stories.category, category));
+      
+      return categoryStories
+        .filter(story => story.status === "approved")
+        .sort((a, b) => 
+          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+        );
+    } catch (error) {
+      console.error("Database error in getStoriesByCategory:", error);
+      return [];
+    }
   }
 
   async getCategories(): Promise<Category[]> {
