@@ -19,6 +19,9 @@ export interface IStorage {
   // Categories
   getCategories(): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
+  
+  // Story deletion
+  deleteStory(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -153,6 +156,19 @@ export class DatabaseStorage implements IStorage {
       .values(insertCategory)
       .returning();
     return category;
+  }
+
+  async deleteStory(id: number): Promise<boolean> {
+    try {
+      const [deletedStory] = await db
+        .delete(stories)
+        .where(eq(stories.id, id))
+        .returning();
+      return !!deletedStory;
+    } catch (error) {
+      console.error("Database error in deleteStory:", error);
+      return false;
+    }
   }
 }
 

@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, getReadingTime, truncateText } from "@/lib/utils";
-import { Check, X, Star, Eye, Clock, User } from "lucide-react";
+import { Check, X, Star, Eye, Clock, User, Trash2 } from "lucide-react";
 import type { Story } from "@shared/schema";
 
 export default function Admin() {
@@ -66,6 +66,28 @@ export default function Admin() {
       toast({
         title: "Update Failed",
         description: "Failed to update featured status.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteStoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/stories/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stories/pending"] });
+      toast({
+        title: "Story Deleted",
+        description: "Story has been permanently deleted.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete story.",
         variant: "destructive",
       });
     },
@@ -226,6 +248,20 @@ export default function Admin() {
                             >
                               <Star className="w-4 h-4 mr-1" />
                               {story.featured ? "Unfeature" : "Feature"}
+                            </Button>
+                            
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to delete "${story.title || 'this story'}"? This action cannot be undone.`)) {
+                                  deleteStoryMutation.mutate(story.id);
+                                }
+                              }}
+                              disabled={deleteStoryMutation.isPending}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Delete
                             </Button>
                           </div>
                           

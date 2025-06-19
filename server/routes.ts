@@ -153,6 +153,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete a story
+  app.delete("/api/stories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const [deletedStory] = await db
+        .delete(stories)
+        .where(eq(stories.id, id))
+        .returning();
+      
+      if (!deletedStory) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+      
+      res.json({ message: "Story deleted successfully", story: deletedStory });
+    } catch (error) {
+      console.error("Delete story error:", error);
+      res.status(500).json({ message: "Failed to delete story" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
