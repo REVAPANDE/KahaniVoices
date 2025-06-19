@@ -1,3 +1,8 @@
+databases:
+  - name: kahani-db
+    databaseName: kahani
+    user: kahani
+
 services:
   - type: web
     name: kahani
@@ -12,8 +17,3 @@ services:
         fromDatabase:
           name: kahani-db
           property: connectionString
-
-databases:
-  - name: kahani-db
-    databaseName: kahani
-    user: kahani

@@ -7,6 +7,8 @@ import * as schema from "@shared/schema";
 neonConfig.webSocketConstructor = ws;
 
 if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL environment variable is missing!");
+  console.error("Available environment variables:", Object.keys(process.env).filter(key => key.includes('DATABASE') || key.includes('PG')));
   throw new Error(
     "DATABASE_URL must be set. Please add your database connection string to environment variables.",
   );
