@@ -1,6 +1,6 @@
-import { users, stories, categories, type User, type InsertUser, type Story, type InsertStory, type Category, type InsertCategory } from "@shared/schema";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import type { User, InsertUser, Story, InsertStory, Category, InsertCategory } from '@shared/schema';
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -22,154 +22,234 @@ export interface IStorage {
   
   // Story deletion
   deleteStory(id: number): Promise<boolean>;
+  
+  // Story featuring
+  updateStoryFeatured(id: number, featured: boolean): Promise<Story | undefined>;
 }
 
-export class DatabaseStorage implements IStorage {
+const DATA_DIR = './data';
+const USERS_FILE = join(DATA_DIR, 'users.json');
+const STORIES_FILE = join(DATA_DIR, 'stories.json');
+const CATEGORIES_FILE = join(DATA_DIR, 'categories.json');
+
+// Ensure data directory exists
+if (!existsSync(DATA_DIR)) {
+  mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function readJsonFile<T>(filePath: string, defaultValue: T): T {
+  try {
+    if (existsSync(filePath)) {
+      const data = readFileSync(filePath, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error(`Error reading ${filePath}:`, error);
+  }
+  return defaultValue;
+}
+
+function writeJsonFile<T>(filePath: string, data: T): void {
+  try {
+    writeFileSync(filePath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error(`Error writing ${filePath}:`, error);
+  }
+}
+
+export class FileStorage implements IStorage {
+  private users: User[] = [];
+  private stories: Story[] = [];
+  private categories: Category[] = [];
+  private nextUserId = 1;
+  private nextStoryId = 1;
+  private nextCategoryId = 1;
+
+  constructor() {
+    this.loadData();
+    this.initializeCategories();
+  }
+
+  private loadData() {
+    this.users = readJsonFile(USERS_FILE, []);
+    this.stories = readJsonFile(STORIES_FILE, []);
+    this.categories = readJsonFile(CATEGORIES_FILE, []);
+
+    // Set next IDs
+    this.nextUserId = Math.max(...this.users.map(u => u.id), 0) + 1;
+    this.nextStoryId = Math.max(...this.stories.map(s => s.id), 0) + 1;
+    this.nextCategoryId = Math.max(...this.categories.map(c => c.id), 0) + 1;
+  }
+
+  private saveUsers() {
+    writeJsonFile(USERS_FILE, this.users);
+  }
+
+  private saveStories() {
+    writeJsonFile(STORIES_FILE, this.stories);
+  }
+
+  private saveCategories() {
+    writeJsonFile(CATEGORIES_FILE, this.categories);
+  }
+
+  private initializeCategories() {
+    if (this.categories.length === 0) {
+      const defaultCategories = [
+        {
+          id: this.nextCategoryId++,
+          name: "Social Justice",
+          slug: "social-justice",
+          description: "Stories of resilience and fighting for equality",
+          icon: "fas fa-fist-raised",
+          gradient: "from-primary to-sage"
+        },
+        {
+          id: this.nextCategoryId++,
+          name: "Identity & Culture",
+          slug: "identity-culture",
+          description: "Celebrating diverse identities and traditions",
+          icon: "fas fa-heart",
+          gradient: "from-secondary to-accent"
+        },
+        {
+          id: this.nextCategoryId++,
+          name: "Community Impact",
+          slug: "community-impact",
+          description: "Local heroes making a difference",
+          icon: "fas fa-users",
+          gradient: "from-sage to-primary"
+        },
+        {
+          id: this.nextCategoryId++,
+          name: "Overcoming Challenges",
+          slug: "overcoming-challenges",
+          description: "Stories of triumph and personal growth",
+          icon: "fas fa-seedling",
+          gradient: "from-accent to-secondary"
+        }
+      ];
+      this.categories = defaultCategories;
+      this.saveCategories();
+    }
+  }
+
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    return this.users.find(user => user.id === id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
+    return this.users.find(user => user.username === username);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
+    const user: User = {
+      id: this.nextUserId++,
+      ...insertUser
+    };
+    this.users.push(user);
+    this.saveUsers();
     return user;
   }
 
   async getStories(status?: string): Promise<Story[]> {
-    try {
-      if (status) {
-        const filteredStories = await db
-          .select()
-          .from(stories)
-          .where(eq(stories.status, status));
-        return filteredStories.sort((a, b) => 
-          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-        );
-      } else {
-        const allStories = await db.select().from(stories);
-        return allStories.sort((a, b) => 
-          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-        );
-      }
-    } catch (error) {
-      console.error("Database error in getStories:", error);
-      return [];
+    let filteredStories = this.stories;
+    if (status) {
+      filteredStories = this.stories.filter(story => story.status === status);
+    } else {
+      // Return approved stories by default
+      filteredStories = this.stories.filter(story => story.status === 'approved');
     }
+    return filteredStories.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   }
 
   async getStory(id: number): Promise<Story | undefined> {
-    const [story] = await db.select().from(stories).where(eq(stories.id, id));
-    return story || undefined;
+    return this.stories.find(story => story.id === id);
   }
 
   async createStory(insertStory: InsertStory): Promise<Story> {
-    const [story] = await db
-      .insert(stories)
-      .values(insertStory)
-      .returning();
+    const story: Story = {
+      id: this.nextStoryId++,
+      ...insertStory,
+      status: 'approved', // Auto-approve for testing
+      featured: false,
+      tags: insertStory.tags || [],
+      allowComments: insertStory.allowComments || true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.stories.push(story);
+    this.saveStories();
     return story;
   }
 
   async updateStoryStatus(id: number, status: string): Promise<Story | undefined> {
-    const [story] = await db
-      .update(stories)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(stories.id, id))
-      .returning();
-    return story || undefined;
+    const story = this.stories.find(s => s.id === id);
+    if (story) {
+      story.status = status;
+      story.updatedAt = new Date();
+      this.saveStories();
+    }
+    return story;
+  }
+
+  async updateStoryFeatured(id: number, featured: boolean): Promise<Story | undefined> {
+    const story = this.stories.find(s => s.id === id);
+    if (story) {
+      story.featured = featured;
+      story.updatedAt = new Date();
+      this.saveStories();
+    }
+    return story;
   }
 
   async getFeaturedStories(): Promise<Story[]> {
-    try {
-      const featuredStories = await db
-        .select()
-        .from(stories)
-        .where(eq(stories.featured, true));
-      
-      return featuredStories
-        .filter(story => story.status === "approved")
-        .sort((a, b) => 
-          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-        );
-    } catch (error) {
-      console.error("Database error in getFeaturedStories:", error);
-      return [];
-    }
+    return this.stories
+      .filter(story => story.featured === true && story.status === 'approved')
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 3);
   }
 
   async searchStories(query: string): Promise<Story[]> {
-    try {
-      const allStories = await db
-        .select()
-        .from(stories)
-        .where(eq(stories.status, "approved"));
-      
-      const lowercaseQuery = query.toLowerCase();
-      return allStories
-        .filter(story => 
-          story.title.toLowerCase().includes(lowercaseQuery) ||
-          story.content.toLowerCase().includes(lowercaseQuery) ||
-          story.tags?.some(tag => tag.toLowerCase().includes(lowercaseQuery))
-        )
-        .sort((a, b) => 
-          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-        );
-    } catch (error) {
-      console.error("Database error in searchStories:", error);
-      return [];
-    }
+    const lowercaseQuery = query.toLowerCase();
+    return this.stories.filter(story => 
+      story.status === 'approved' && (
+        story.title.toLowerCase().includes(lowercaseQuery) ||
+        story.content.toLowerCase().includes(lowercaseQuery) ||
+        (story.tags && story.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery)))
+      )
+    );
   }
 
   async getStoriesByCategory(category: string): Promise<Story[]> {
-    try {
-      const categoryStories = await db
-        .select()
-        .from(stories)
-        .where(eq(stories.category, category));
-      
-      return categoryStories
-        .filter(story => story.status === "approved")
-        .sort((a, b) => 
-          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-        );
-    } catch (error) {
-      console.error("Database error in getStoriesByCategory:", error);
-      return [];
-    }
+    return this.stories.filter(story => 
+      story.status === 'approved' && story.category === category
+    );
   }
 
   async getCategories(): Promise<Category[]> {
-    return await db.select().from(categories);
+    return this.categories;
   }
 
   async createCategory(insertCategory: InsertCategory): Promise<Category> {
-    const [category] = await db
-      .insert(categories)
-      .values(insertCategory)
-      .returning();
+    const category: Category = {
+      id: this.nextCategoryId++,
+      ...insertCategory
+    };
+    this.categories.push(category);
+    this.saveCategories();
     return category;
   }
 
   async deleteStory(id: number): Promise<boolean> {
-    try {
-      const [deletedStory] = await db
-        .delete(stories)
-        .where(eq(stories.id, id))
-        .returning();
-      return !!deletedStory;
-    } catch (error) {
-      console.error("Database error in deleteStory:", error);
-      return false;
+    const index = this.stories.findIndex(story => story.id === id);
+    if (index !== -1) {
+      this.stories.splice(index, 1);
+      this.saveStories();
+      return true;
     }
+    return false;
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new FileStorage();

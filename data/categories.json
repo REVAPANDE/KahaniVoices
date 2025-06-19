@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1,
+    "name": "Social Justice",
+    "slug": "social-justice",
+    "description": "Stories of resilience and fighting for equality",
+    "icon": "fas fa-fist-raised",
+    "gradient": "from-primary to-sage"
+  },
+  {
+    "id": 2,
+    "name": "Identity & Culture",
+    "slug": "identity-culture",
+    "description": "Celebrating diverse identities and traditions",
+    "icon": "fas fa-heart",
+    "gradient": "from-secondary to-accent"
+  },
+  {
+    "id": 3,
+    "name": "Community Impact",
+    "slug": "community-impact",
+    "description": "Local heroes making a difference",
+    "icon": "fas fa-users",
+    "gradient": "from-sage to-primary"
+  },
+  {
+    "id": 4,
+    "name": "Overcoming Challenges",
+    "slug": "overcoming-challenges",
+    "description": "Stories of triumph and personal growth",
+    "icon": "fas fa-seedling",
+    "gradient": "from-accent to-secondary"
+  }
+]

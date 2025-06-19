@@ -21,10 +21,10 @@ Kahani is a full-stack story sharing platform that allows users to submit, brows
 - **Development**: Hot reload with tsx for TypeScript execution
 
 ### Data Storage
-- **Database**: PostgreSQL with Drizzle ORM
-- **Schema Management**: Drizzle Kit for migrations and schema management
-- **Storage Implementation**: DatabaseStorage class using PostgreSQL
-- **Database Provider**: Replit PostgreSQL database
+- **Storage Type**: File-based JSON storage for simplicity
+- **Implementation**: FileStorage class using local JSON files
+- **Persistence**: Stories stored in ./data directory
+- **Auto-initialization**: Categories and data structure created automatically
 
 ## Key Components
 
@@ -93,19 +93,19 @@ Kahani is a full-stack story sharing platform that allows users to submit, brows
 - **Deployment**: Replit autoscale deployment target
 - **Environment**: Production mode with optimized assets
 
-### Database Management
-- **Migrations**: Drizzle Kit with `npm run db:push`
-- **Schema Location**: `shared/schema.ts`
-- **Configuration**: `drizzle.config.ts`
+### File Storage Management
+- **Data Directory**: `./data/` with JSON files
+- **Files**: users.json, stories.json, categories.json
+- **Auto-initialization**: Default categories created on startup
 
 ## Changelog
 
-- June 19, 2025: Made deployment ready for Render
-  - Added automatic database initialization
-  - Enhanced build scripts for production
-  - Created Render configuration files
-  - Added SSL support for database connections
-  - Improved error handling for deployment
+- June 19, 2025: Simplified for Render deployment
+  - Replaced database with file-based storage
+  - Removed DATABASE_URL dependency
+  - Stories now auto-approve for testing
+  - Simplified deployment configuration
+  - Data persists in JSON files
 - June 19, 2025: Added complete admin functionality
   - Added story deletion with confirmation
   - Enhanced admin panel with full CRUD operations

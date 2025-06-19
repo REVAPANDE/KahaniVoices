@@ -20,106 +20,67 @@ A platform for sharing real-life stories and amplifying marginalized community v
 
 ## Deployment on Render
 
-### 1. Database Setup
+### Simple File-Based Deployment
 
-1. Create a PostgreSQL database on Render:
-   - Go to your Render dashboard
-   - Click "New" → "PostgreSQL"
-   - Name it `kahani-db`
-   - Note down the connection details
+This version uses local file storage instead of a database, making deployment much simpler.
 
-### 2. Web Service Setup
+### 1. Deploy with render.yaml (Recommended)
 
-#### Option A: Using render.yaml (Recommended)
-1. Push the `render.yaml` file to your repository
+1. Push your code to GitHub with the `render.yaml` file
 2. Go to Render Dashboard
 3. Click "New" → "Blueprint"
 4. Connect your GitHub repository
-5. Render will automatically create both the database and web service
+5. Render will automatically deploy your app
 
-#### Option B: Manual Setup
-1. **First, create the database:**
-   - Go to Render Dashboard
-   - Click "New" → "PostgreSQL" 
-   - Name: `kahani-db`
-   - Database Name: `kahani`
-   - User: `kahani`
+### 2. Manual Deployment
 
-2. **Then create the web service:**
-   - Click "New" → "Web Service"
+1. Create a new Web Service on Render:
    - Connect your GitHub repository
    - Use these settings:
      - **Build Command**: `npm install && vite build --outDir dist/public --emptyOutDir && esbuild server/index.ts --bundle --platform=node --outfile=dist/index.js --external:@neondatabase/serverless --external:ws`
-     - **Start Command**: `npm run db:push && node dist/index.js`
+     - **Start Command**: `node dist/index.js`
      - **Node Version**: 18 or higher
 
-### 3. Environment Variables
+2. Set environment variable:
+   - `NODE_ENV`: `production`
 
-**For Blueprint (render.yaml):**
-- Environment variables are automatically configured
+### 3. What happens during deployment
 
-**For Manual Setup:**
-Add these environment variables in your web service:
+- Application builds and deploys
+- File storage system initializes automatically
+- Default categories are created
+- Stories are stored in local JSON files
+- Your app goes live immediately
 
-- `NODE_ENV`: `production`
-- `DATABASE_URL`: Your PostgreSQL connection string from the database you created
-
-**Getting the DATABASE_URL:**
-1. Go to your PostgreSQL database in Render
-2. Copy the "External Database URL" 
-3. The format should be: `postgresql://username:password@hostname:port/database_name`
-
-### 4. Deploy
-
-**For Blueprint:**
-1. After connecting your repository, Render will automatically deploy
-2. Monitor the build logs for any issues
-
-**For Manual Setup:**
-1. Ensure the DATABASE_URL environment variable is set
-2. Click "Create Web Service"
-3. Render will automatically build and deploy
-
-**What happens during deployment:**
-- Application builds successfully
-- Database migrations run automatically
-- Default categories are initialized
-- Your app goes live
-
-Your Kahani platform will be available at the Render-provided URL.
+Your Kahani platform will be available at the Render-provided URL with persistent file storage.
 
 ## Local Development
 
 1. Clone the repository
 2. Install dependencies: `npm install`
-3. Set up your `.env` file with `DATABASE_URL` (see `.env.example`)
-4. Run database migrations: `npm run db:push`
-5. Start development server: `npm run dev`
+3. Start development server: `npm run dev`
+
+The app will automatically create a `data` directory and initialize with default categories.
 
 ## Troubleshooting Deployment
 
 ### Common Issues:
 
-**"DATABASE_URL must be set" Error:**
-- For Blueprint: Make sure the database section is defined before the services section in `render.yaml`
-- For Manual: Ensure you've created the PostgreSQL database first, then added the DATABASE_URL to your web service environment variables
-- Double-check the connection string format: `postgresql://user:password@host:port/database`
-
 **Build Failures:**
-- Check that all dependencies are in package.json (don't edit manually)
+- Check that all dependencies are in package.json
 - Verify Node.js version compatibility (18+)
 - Review build logs for specific error messages
 
-**Database Connection Issues:**
-- Ensure your PostgreSQL database is running
-- Verify SSL connections are enabled
-- Use the "External Database URL" from Render, not the internal one
+**File Storage Issues:**
+- The app creates a `data` directory automatically
+- Stories are stored in JSON files that persist across restarts
+- No database configuration needed
 
 ### Render-specific Tips:
-- Always create the database before the web service
-- Use PostgreSQL 14+ for best compatibility  
-- Monitor the deployment logs carefully
-- Database initialization happens automatically on first run
+- File storage works immediately without setup
+- Stories persist in the container filesystem
+- Monitor deployment logs for any build issues
+- Categories initialize automatically on first run
 
 ## Admin Panel
 

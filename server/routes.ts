@@ -1,10 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertStorySchema, stories } from "@shared/schema";
+import { insertStorySchema } from "@shared/schema";
 import { z } from "zod";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all approved stories
@@ -136,17 +134,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const { featured } = req.body;
       
-      const [story] = await db
-        .update(stories)
-        .set({ featured, updatedAt: new Date() })
-        .where(eq(stories.id, id))
-        .returning();
-      
+      const story = await storage.getStory(id);
       if (!story) {
         return res.status(404).json({ message: "Story not found" });
       }
       
-      res.json(story);
+      // Update featured status in file storage
+      const updatedStory = await storage.updateStoryFeatured(id, featured);
+      
+      res.json(updatedStory);
     } catch (error) {
       console.error("Feature update error:", error);
       res.status(500).json({ message: "Failed to update story" });
@@ -158,16 +154,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       
-      const [deletedStory] = await db
-        .delete(stories)
-        .where(eq(stories.id, id))
-        .returning();
-      
-      if (!deletedStory) {
+      const story = await storage.getStory(id);
+      if (!story) {
         return res.status(404).json({ message: "Story not found" });
       }
       
-      res.json({ message: "Story deleted successfully", story: deletedStory });
+      const deleted = await storage.deleteStory(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+      
+      res.json({ message: "Story deleted successfully", story });
     } catch (error) {
       console.error("Delete story error:", error);
       res.status(500).json({ message: "Failed to delete story" });
