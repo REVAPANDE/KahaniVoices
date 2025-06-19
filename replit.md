@@ -100,6 +100,17 @@ Kahani is a full-stack story sharing platform that allows users to submit, brows
 
 ## Changelog
 
+- June 19, 2025: Made deployment ready for Render
+  - Added automatic database initialization
+  - Enhanced build scripts for production
+  - Created Render configuration files
+  - Added SSL support for database connections
+  - Improved error handling for deployment
+- June 19, 2025: Added complete admin functionality
+  - Added story deletion with confirmation
+  - Enhanced admin panel with full CRUD operations
+  - Fixed featured stories endpoint issues
+  - Added database management capabilities
 - June 19, 2025: Added PostgreSQL database
   - Replaced in-memory storage with DatabaseStorage
   - Configured Drizzle ORM with PostgreSQL
