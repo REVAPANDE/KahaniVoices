@@ -90,13 +90,10 @@ Access the admin panel at `/admin` to:
 - Delete inappropriate content
 - Monitor platform activity
 
-## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+![Screenshot (360)](https://github.com/user-attachments/assets/2689efa9-937b-45dc-9b56-bee2e456ebf3)
 
-## License
+![Screenshot (347)](https://github.com/user-attachments/assets/83aa5437-f3cf-4110-a946-adc09d231bb9)
 
-MIT License - see LICENSE file for details.
+![Screenshot (348)](https://github.com/user-attachments/assets/4508981c-ebd3-4c98-b027-c692bedbcd86)
+![Screenshot (349)](https://github.com/user-attachments/assets/22c74dc5-0c55-4e99-8edd-1702e128122d)
